@@ -8,7 +8,6 @@ import datetime as dt
 import decimal
 import inspect
 import json
-import types
 import uuid
 import warnings
 from collections import namedtuple
@@ -472,7 +471,7 @@ class BaseSchema(base.SchemaABC):
                             'many=True to serialize a collection.',
                             category=DeprecationWarning)
 
-        if isinstance(obj, types.GeneratorType):
+        if many and utils.is_iterable_but_not_string(obj):
             obj = list(obj)
 
         processed_obj = self._invoke_dump_processors(PRE_DUMP, obj, many, original_data=obj)
@@ -609,13 +608,16 @@ class BaseSchema(base.SchemaABC):
             errors = {}
         self._invoke_field_validators(data=result, many=many)
         errors = self._unmarshal.errors
+        field_errors = bool(errors)
         # Run schema-level migration
         try:
-            self._invoke_validators(pass_many=True, data=result, original_data=data, many=many)
+            self._invoke_validators(pass_many=True, data=result, original_data=data, many=many,
+                                    field_errors=field_errors)
         except ValidationError as err:
             errors.update(err.messages)
         try:
-            self._invoke_validators(pass_many=False, data=result, original_data=data, many=many)
+            self._invoke_validators(pass_many=False, data=result, original_data=data, many=many,
+                                    field_errors=field_errors)
         except ValidationError as err:
             errors.update(err.messages)
         if errors:
@@ -773,7 +775,7 @@ class BaseSchema(base.SchemaABC):
             if many:
                 for idx, item in enumerate(data):
                     try:
-                        value = item[field_name]
+                        value = item[field_obj.attribute or field_name]
                     except KeyError:
                         pass
                     else:
@@ -786,7 +788,7 @@ class BaseSchema(base.SchemaABC):
                         )
             else:
                 try:
-                    value = data[field_name]
+                    value = data[field_obj.attribute or field_name]
                 except KeyError:
                     pass
                 else:
@@ -797,12 +799,17 @@ class BaseSchema(base.SchemaABC):
                         field_obj=field_obj
                     )
 
-    def _invoke_validators(self, pass_many, data, original_data, many):
+    def _invoke_validators(self, pass_many, data, original_data, many, field_errors=False):
         errors = {}
         for attr_name in self.__processors__[(VALIDATES_SCHEMA, pass_many)]:
             validator = getattr(self, attr_name)
             validator_kwargs = validator.__marshmallow_kwargs__[(VALIDATES_SCHEMA, pass_many)]
             pass_original = validator_kwargs.get('pass_original', False)
+
+            skip_on_field_errors = validator_kwargs['skip_on_field_errors']
+            if skip_on_field_errors and field_errors:
+                continue
+
             if pass_many:
                 validator = functools.partial(validator, many=many)
             if many and not pass_many:

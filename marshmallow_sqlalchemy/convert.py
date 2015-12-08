@@ -10,20 +10,17 @@ import sqlalchemy as sa
 from .exceptions import ModelConversionError
 from .fields import Related
 
-
 def _is_field(value):
     return (
         isinstance(value, type) and
         issubclass(value, fields.Field)
     )
 
-
 def _postgres_array_factory(converter, data_type):
     return functools.partial(
         fields.List,
         converter._get_field_class_for_data_type(data_type.item_type),
     )
-
 
 def _should_exclude_field(column, fields=None, exclude=None):
     if fields and column.key not in fields:
@@ -32,9 +29,7 @@ def _should_exclude_field(column, fields=None, exclude=None):
         return True
     return False
 
-
 class ModelConverter(object):
-
     """Class that converts a SQLAlchemy model into a dictionary of corresponding
     marshmallow `Fields <marshmallow.fields.Field>`.
     """
@@ -65,8 +60,7 @@ class ModelConverter(object):
         'ONETOMANY': True,
     }
 
-    def fields_for_model(
-            self, model, include_fk=False, fields=None, exclude=None):
+    def fields_for_model(self, model, include_fk=False, fields=None, exclude=None):
         result = {}
         for prop in model.__mapper__.iterate_properties:
             if _should_exclude_field(prop, fields=fields, exclude=exclude):
@@ -85,8 +79,7 @@ class ModelConverter(object):
                 result[prop.key] = field
         return result
 
-    def fields_for_table(
-            self, table, include_fk=False, fields=None, exclude=None):
+    def fields_for_table(self, table, include_fk=False, fields=None, exclude=None):
         result = {}
         for column in table.columns:
             if _should_exclude_field(column, fields=fields, exclude=exclude):
@@ -177,10 +170,10 @@ class ModelConverter(object):
         """
         if column.nullable:
             kwargs['allow_none'] = True
+        kwargs['required'] = not column.nullable
 
         if hasattr(column.type, 'enums'):
-            kwargs['validate'].append(
-                validate.OneOf(choices=column.type.enums))
+            kwargs['validate'].append(validate.OneOf(choices=column.type.enums))
 
         # Add a length validator if a max length is set on the column
         if hasattr(column.type, 'length'):
@@ -201,6 +194,7 @@ class ModelConverter(object):
                 break
         kwargs.update({
             'allow_none': nullable,
+            'required': not nullable,
         })
 
     def get_base_kwargs(self):

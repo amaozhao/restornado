@@ -3,7 +3,7 @@ import marshmallow as ma
 from marshmallow.compat import with_metaclass, iteritems
 
 from .convert import ModelConverter
-from .fields import get_primary_columns
+from .fields import get_primary_keys
 
 
 class TableSchemaOpts(ma.SchemaOpts):
@@ -137,12 +137,10 @@ class ModelSchema(with_metaclass(ModelSchemaMeta, ma.Schema)):
         schema = UserSchema()
 
         user = schema.load({'name': 'Bill'}, session=session)
-        existing_user = schema.load(
-            {'name': 'Bill'}, instance=User.query.first())
+        existing_user = schema.load({'name': 'Bill'}, instance=User.query.first())
 
     :param session: Optional SQLAlchemy session; may be overridden in `load.`
-    :param instance: Optional existing instance to modify;
-    may be overridden in `load`.
+    :param instance: Optional existing instance to modify; may be overridden in `load`.
     """
     OPTIONS_CLASS = ModelSchemaOpts
 
@@ -158,10 +156,10 @@ class ModelSchema(with_metaclass(ModelSchemaMeta, ma.Schema)):
 
     def get_instance(self, data):
         """Retrieve an existing record by primary key(s)."""
-        columns = get_primary_columns(self.opts.model)
+        props = get_primary_keys(self.opts.model)
         filters = {
-            column.key: data.get(column.key)
-            for column in columns
+            prop.key: data.get(prop.key)
+            for prop in props
         }
         if None not in filters.values():
             return self.session.query(
