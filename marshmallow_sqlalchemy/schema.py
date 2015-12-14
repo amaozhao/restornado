@@ -7,7 +7,6 @@ from .fields import get_primary_keys
 
 
 class TableSchemaOpts(ma.SchemaOpts):
-
     """Options class for `TableSchema`.
     Adds the following options:
 
@@ -23,9 +22,7 @@ class TableSchemaOpts(ma.SchemaOpts):
         self.model_converter = getattr(meta, 'model_converter', ModelConverter)
         self.include_fk = getattr(meta, 'include_fk', False)
 
-
 class ModelSchemaOpts(ma.SchemaOpts):
-
     """Options class for `ModelSchema`.
     Adds the following options:
 
@@ -44,9 +41,7 @@ class ModelSchemaOpts(ma.SchemaOpts):
         self.model_converter = getattr(meta, 'model_converter', ModelConverter)
         self.include_fk = getattr(meta, 'include_fk', False)
 
-
 class SchemaMeta(ma.schema.SchemaMeta):
-
     """Metaclass for `ModelSchema`."""
 
     # override SchemaMeta
@@ -70,7 +65,6 @@ class SchemaMeta(ma.schema.SchemaMeta):
     def get_fields(mcs, converter, opts):
         pass
 
-
 class TableSchemaMeta(SchemaMeta):
 
     @classmethod
@@ -83,7 +77,6 @@ class TableSchemaMeta(SchemaMeta):
                 include_fk=opts.include_fk,
             )
         return {}
-
 
 class ModelSchemaMeta(SchemaMeta):
 
@@ -98,9 +91,7 @@ class ModelSchemaMeta(SchemaMeta):
             )
         return {}
 
-
 class TableSchema(with_metaclass(TableSchemaMeta, ma.Schema)):
-
     """Base class for SQLAlchemy model-based Schemas.
 
     Example: ::
@@ -120,9 +111,7 @@ class TableSchema(with_metaclass(TableSchemaMeta, ma.Schema)):
     """
     OPTIONS_CLASS = TableSchemaOpts
 
-
 class ModelSchema(with_metaclass(ModelSchemaMeta, ma.Schema)):
-
     """Base class for SQLAlchemy model-based Schemas.
 
     Example: ::
@@ -145,14 +134,10 @@ class ModelSchema(with_metaclass(ModelSchemaMeta, ma.Schema)):
     OPTIONS_CLASS = ModelSchemaOpts
 
     def __init__(self, *args, **kwargs):
-        view = kwargs.pop('view', None)
         session = kwargs.pop('session', None)
-        redis = kwargs.pop('redis', None)
         self.instance = kwargs.pop('instance', None)
         super(ModelSchema, self).__init__(*args, **kwargs)
         self.session = session or self.opts.sqla_session
-        self.view = view or None
-        self.redis = redis or None
 
     def get_instance(self, data):
         """Retrieve an existing record by primary key(s)."""
