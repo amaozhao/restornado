@@ -138,16 +138,48 @@ class GenericAPIView(BaseRequestHandler):
         return 1
 
     def get_permission(self, session):
-        return True
+        token = self.request.headers.get('Authorization')
+        userId = self.request.headers.get('userId')
+        if not (userId and token):
+            return False
+        perm_code = self.permissions.get('get', None)
+        query = session.query(Role).filter(
+            Role.users.any(id=userId),
+            Role.permissions.any(perm_code=perm_code))
+        return session.query(query.exists()).scalar()
 
     def post_permission(self, session):
-        return True
+        token = self.request.headers.get('Authorization')
+        userId = self.request.headers.get('userId')
+        if not (userId and token):
+            return False
+        perm_code = self.permissions.get('post', None)
+        query = session.query(Role).filter(
+            Role.users.any(id=userId),
+            Role.permissions.any(perm_code=perm_code))
+        return session.query(query.exists()).scalar()
 
     def put_permission(self, session):
-        return True
+        token = self.request.headers.get('Authorization')
+        userId = self.request.headers.get('userId')
+        if not (userId and token):
+            return False
+        perm_code = self.permissions.get('put', None)
+        query = session.query(Role).filter(
+            Role.users.any(id=userId),
+            Role.permissions.any(perm_code=perm_code))
+        return session.query(query.exists()).scalar()
 
     def delete_permission(self, session):
-        return True
+        token = self.request.headers.get('Authorization')
+        userId = self.request.headers.get('userId')
+        if not (userId and token):
+            return False
+        perm_code = self.permissions.get('delete', None)
+        query = session.query(Role).filter(
+            Role.users.any(id=userId),
+            Role.permissions.any(perm_code=perm_code))
+        return session.query(query.exists()).scalar()
 
 
 class CreateAPIView(CreateModelMixin, GenericAPIView):
