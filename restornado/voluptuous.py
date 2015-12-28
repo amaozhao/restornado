@@ -1,4 +1,3 @@
-
 # encoding: utf-8
 #
 # Copyright (C) 2010-2013 Alec Thomas <alec@swapoff.org>
@@ -84,12 +83,12 @@ Validate like so:
     ...                  'Users': {'snmp_community': 'monkey'}}}}
     True
 """
+import collections
 import datetime
 import inspect
 import os
 import re
 import sys
-
 from contextlib import contextmanager
 from functools import wraps
 
@@ -100,15 +99,15 @@ if sys.version_info >= (3,):
     unicode = str
     basestring = str
     ifilter = filter
-    iteritems_attr = 'items'
+    iteritems = lambda d: d.items()
 else:
     from itertools import ifilter
     import urlparse
-    iteritems_attr = 'iteritems'
+    iteritems = lambda d: d.iteritems()
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.8.7'
+__version__ = '0.8.8'
 
 
 @contextmanager
@@ -137,11 +136,6 @@ def default_factory(value):
     if value is UNDEFINED or callable(value):
         return value
     return lambda: value
-
-
-def iteritems(mapping):
-  """Return iteritems for Mappings."""
-  return getattr(mapping, iteritems_attr)()
 
 
 # options for extra keys
@@ -351,7 +345,7 @@ class Schema(object):
             return lambda _, v: v
         if isinstance(schema, Object):
             return self._compile_object(schema)
-        if isinstance(schema, dict):
+        if isinstance(schema, collections.Mapping):
             return self._compile_dict(schema)
         elif isinstance(schema, list):
             return self._compile_list(schema)
@@ -360,7 +354,7 @@ class Schema(object):
         type_ = type(schema)
         if type_ is type:
             type_ = schema
-        if type_ in (int, long, str, unicode, float, complex, object,
+        if type_ in (bool, int, long, str, unicode, float, complex, object,
                      list, dict, type(None)) or callable(schema):
             return _compile_scalar(schema)
         raise SchemaError('unsupported schema data type %r' %
