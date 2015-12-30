@@ -49,6 +49,7 @@ class ListModelMixin(object):
         with session_manager() as session:
             if self.get_permission(session):
                 queryset = self.get_queryset(session)
+                total = self.get_queryset_total(session, queryset)
                 schema = self.get_schema(session, many=True)
                 if self.pagination:
                     page = self.paginate_queryset(queryset)
@@ -56,16 +57,21 @@ class ListModelMixin(object):
                         schema = self.get_schema(session, many=True)
                         return {
                             'code': 0,
-                            'total': queryset.count(),
+                            'total': total,
                             'data': schema.dump(page).data
                         }
                 return {
                     'code': 0,
-                    'total': queryset.count(),
+                    'total': total,
                     'data': schema.dump(queryset).data
                 }
             else:
                 return PERMISSION_ERROR
+
+    def get_queryset_total(self, session, queryset):
+        count = queryset.with_labels(
+            ).statement.with_only_columns([func.count()])
+        return session.execute(count).scalar()
 
 
 class RetrieveModelMixin(object):
