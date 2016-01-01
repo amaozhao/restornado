@@ -73,8 +73,18 @@ class ModelConverter(object):
         'ONETOMANY': True,
     }
 
-    def fields_for_model(self, model, include_fk=False, fields=None, exclude=None):
-        result = {}
+    def __init__(self, schema_cls=None):
+        self.schema_cls = schema_cls
+
+    @property
+    def type_mapping(self):
+        if self.schema_cls:
+            return self.schema_cls.TYPE_MAPPING
+        else:
+            return ma.Schema.TYPE_MAPPING
+
+    def fields_for_model(self, model, include_fk=False, fields=None, exclude=None, dict_cls=dict):
+        result = dict_cls()
         for prop in model.__mapper__.iterate_properties:
             if _should_exclude_field(prop, fields=fields, exclude=exclude):
                 continue
@@ -92,8 +102,8 @@ class ModelConverter(object):
                 result[prop.key] = field
         return result
 
-    def fields_for_table(self, table, include_fk=False, fields=None, exclude=None):
-        result = {}
+    def fields_for_table(self, table, include_fk=False, fields=None, exclude=None, dict_cls=dict):
+        result = dict_cls()
         for column in table.columns:
             if _should_exclude_field(column, fields=fields, exclude=exclude):
                 continue
@@ -151,8 +161,9 @@ class ModelConverter(object):
                 python_type = data_type.python_type
             except NotImplementedError:
                 python_type = None
-            if python_type in ma.Schema.TYPE_MAPPING:
-                field_cls = ma.Schema.TYPE_MAPPING[python_type]
+
+            if python_type in self.type_mapping:
+                field_cls = self.type_mapping[python_type]
             else:
                 raise ModelConversionError(
                     'Could not find field column of type {0}.'.format(types[0]))
