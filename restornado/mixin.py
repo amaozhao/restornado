@@ -4,6 +4,7 @@ from tornado.concurrent import run_on_executor
 from restornado.database.session import session_manager
 from http_code import PERMISSION_ERROR, PARAMTER_ERROR
 # from restornado.voluptuous import MultipleInvalid
+from sqlalchemy.sql import func
 
 
 class CreateModelMixin(object):
