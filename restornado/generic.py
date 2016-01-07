@@ -13,6 +13,7 @@ from restornado.mixin import (
     DestroyModelMixin, DestroyManyModelMixin
 )
 from modules.account.models import User, Permission, Role
+from restornado.validate import ValidateMixin
 from restornado.renderers import JSONRenderer
 
 
@@ -49,8 +50,13 @@ class BaseRequestHandler(RequestHandler):
         except:
             return {}
 
+    @property
+    def arguments(self):
+        return dict(
+            [(k, v[0]) for k, v in self.request.arguments.items()])
 
-class GenericAPIView(BaseRequestHandler):
+
+class GenericAPIView(BaseRequestHandler, ValidateMixin):
 
     """
     Base class for all other generic views.
@@ -189,9 +195,23 @@ class CreateAPIView(CreateModelMixin, GenericAPIView):
     """
     @gen.coroutine
     def post(self, *args, **kwargs):
-        data = yield self.create(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.post_validate()
+        if isinstance(validation, dict):
+            data = yield self.create(validation, *args, **kwargs)
+            if isinstance(data, self.model):
+                output = {'code': 0, 'msg': u'成功'}
+                result = yield self.task(data)
+                if result:
+                    self.write(JSONRenderer().render(output))
+            else:
+                self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
+
+    @gen.coroutine
+    def task(self, data):
+        return True
 
 
 class ListAPIView(ListModelMixin, GenericAPIView):
@@ -202,8 +222,12 @@ class ListAPIView(ListModelMixin, GenericAPIView):
 
     @gen.coroutine
     def get(self, *args, **kwargs):
-        data = yield self.list(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.get_validate()
+        if isinstance(validation, dict):
+            data = yield self.list(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
 
@@ -214,8 +238,12 @@ class RetrieveAPIView(RetrieveModelMixin, GenericAPIView):
     """
     @gen.coroutine
     def get(self, *args, **kwargs):
-        data = yield self.retrieve(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.get_validate()
+        if isinstance(validation, dict):
+            data = yield self.retrieve(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
 
@@ -225,8 +253,15 @@ class DestroyAPIView(DestroyModelMixin, GenericAPIView):
     Concrete view for deleting a model instance.
     """
 
+    @gen.coroutine
     def delete(self, *args, **kwargs):
-        return self.destroy(*args, **kwargs)
+        validation = self.delete_validate()
+        if isinstance(validation, dict):
+            data = yield self.destroy(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
+        self.finish()
 
 
 class UpdateAPIView(UpdateModelMixin, GenericAPIView):
@@ -236,8 +271,12 @@ class UpdateAPIView(UpdateModelMixin, GenericAPIView):
     """
     @gen.coroutine
     def put(self, *args, **kwargs):
-        data = yield self.update(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.put_validate()
+        if isinstance(validation, dict):
+            data = yield self.update(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
 
@@ -248,25 +287,44 @@ class ListCreateAPIView(ListModelMixin, CreateModelMixin, GenericAPIView):
     """
     @gen.coroutine
     def get(self, *args, **kwargs):
-        data = yield self.list(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.get_validate()
+        if isinstance(validation, dict):
+            data = yield self.list(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
     @gen.coroutine
     def post(self, *args, **kwargs):
-        data = yield self.create(*args, **kwargs)
-        if data.get('code') == 0:
-            self.write(JSONRenderer().render({'code': 0, 'msg': u'成功'}))
+        validation = self.post_validate()
+        if isinstance(validation, dict):
+            data = yield self.create(*args, **kwargs)
+            if isinstance(data, self.model):
+                output = {'code': 0, 'msg': u'成功'}
+                result = yield self.task(data)
+                if result:
+                    self.write(JSONRenderer().render(output))
+            else:
+                self.write(JSONRenderer().render(data))
         else:
-            self.write(JSONRenderer().render(data))
+            self.write(JSONRenderer().render(validation))
         self.finish()
+
+    @gen.coroutine
+    def task(self, data):
+        return True
 
 
 class ListCreateDeleteAPIView(ListCreateAPIView, DestroyManyModelMixin):
     @gen.coroutine
     def delete(self, *args, **kwargs):
-        data = yield self.destroy(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.delete_validate()
+        if isinstance(validation, dict):
+            data = yield self.destroy(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
 
@@ -279,17 +337,25 @@ class RetrieveUpdateAPIView(RetrieveModelMixin,
     """
     @gen.coroutine
     def get(self, *args, **kwargs):
-        data = yield self.retrieve(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.get_validate()
+        if isinstance(validation, dict):
+            data = yield self.retrieve(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
     @gen.coroutine
     def put(self, *args, **kwargs):
-        data = yield self.update(*args, **kwargs)
-        if data.get('code', 0) == 0:
-            self.write(JSONRenderer().render({'code': 0, 'msg': u'成功'}))
+        validation = self.put_validate()
+        if isinstance(validation, dict):
+            data = yield self.update(validation, *args, **kwargs)
+            if data.get('code', 0) == 0:
+                self.write(JSONRenderer().render({'code': 0, 'msg': u'成功'}))
+            else:
+                self.write(JSONRenderer().render(data))
         else:
-            self.write(JSONRenderer().render(data))
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
 
@@ -302,14 +368,22 @@ class RetrieveDestroyAPIView(RetrieveModelMixin,
     """
     @gen.coroutine
     def get(self, *args, **kwargs):
-        data = yield self.retrieve(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.get_validate()
+        if isinstance(validation, dict):
+            data = yield self.retrieve(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
     @gen.coroutine
     def delete(self, *args, **kwargs):
-        data = yield self.destroy(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.delete_validate()
+        if isinstance(validation, dict):
+            data = yield self.destroy(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
 
@@ -322,21 +396,33 @@ class RetrieveUpdateDestroyAPIView(RetrieveModelMixin,
     """
     @gen.coroutine
     def get(self, *args, **kwargs):
-        data = yield self.retrieve(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.get_validate()
+        if isinstance(validation, dict):
+            data = yield self.retrieve(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
     @gen.coroutine
     def put(self, *args, **kwargs):
-        data = yield self.update(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.put_validate()
+        if isinstance(validation, dict):
+            data = yield self.update(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()
 
     def patch(self, *args, **kwargs):
-        return self.partial_update(*args, **kwargs)
+        self.finish()
 
     @gen.coroutine
     def delete(self, *args, **kwargs):
-        data = yield self.destroy(*args, **kwargs)
-        self.write(JSONRenderer().render(data))
+        validation = self.delete_validate()
+        if isinstance(validation, dict):
+            data = yield self.destroy(validation, *args, **kwargs)
+            self.write(JSONRenderer().render(data))
+        else:
+            self.write(JSONRenderer().render(validation))
         self.finish()

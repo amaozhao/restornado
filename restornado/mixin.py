@@ -2,8 +2,6 @@
 
 from tornado.concurrent import run_on_executor
 from restornado.database.session import session_manager
-from http_code import PERMISSION_ERROR, PARAMTER_ERROR
-# from restornado.voluptuous import MultipleInvalid
 from sqlalchemy.sql import func
 
 
@@ -20,7 +18,7 @@ class CreateModelMixin(object):
                     try:
                         data = self.schema(self.body)
                     except:
-                        return PARAMTER_ERROR
+                        return {'code': 1, 'msg': u'失败'}
                 obj = self.perform_create(session, data)
                 if isinstance(obj, self.model):
                     return {
@@ -30,7 +28,7 @@ class CreateModelMixin(object):
                 else:
                     return obj
             else:
-                return PERMISSION_ERROR
+                return {'code': 1, 'msg': u'无此权限'}
 
     def perform_create(self, session, data):
         self.schema = self.get_schema(session)
@@ -67,7 +65,7 @@ class ListModelMixin(object):
                     'data': schema.dump(queryset).data
                 }
             else:
-                return PERMISSION_ERROR
+                return {'code': 1, 'msg': u'无此权限'}
 
     def get_queryset_total(self, session, queryset):
         count = queryset.with_labels(
@@ -88,7 +86,7 @@ class RetrieveModelMixin(object):
                 schema = self.get_schema(session)
                 return {'code': 0, 'data': schema.dump(instance).data}
             else:
-                return PERMISSION_ERROR
+                return {'code': 1, 'msg': u'无此权限'}
 
 
 class UpdateModelMixin(object):
@@ -104,12 +102,12 @@ class UpdateModelMixin(object):
                     try:
                         data = self.schema(self.body)
                     except:
-                        return PARAMTER_ERROR
+                        return {'code': 1, 'msg': u'失败'}
                 instance = self.perform_update(
                     session, self.get_object(session, *args, **kwargs), data)
                 return {'code': 0, 'data': self.schema.dump(instance).data}
             else:
-                return PERMISSION_ERROR
+                return {'code': 1, 'msg': u'无此权限'}
 
     def perform_update(self, session, instance, data):
         self.schema = self.get_schema(session, instance=instance)
@@ -129,7 +127,7 @@ class DestroyManyModelMixin(object):
             if self.delete_permission(session):
                 return self.remove(session, *args, **kwargs)
             else:
-                return PERMISSION_ERROR
+                return {'code': 1, 'msg': u'无此权限'}
 
     def remove(self, session, *args, **kwargs):
         li = self.body.get('list')
@@ -152,7 +150,7 @@ class DestroyModelMixin(object):
                 self.perform_destroy(session, instance)
                 return {'code': 0, 'msg': u'成功'}
             else:
-                return PERMISSION_ERROR
+                return {'code': 1, 'msg': u'无此权限'}
 
     def perform_destroy(self, session, instance):
         instance.delete()
