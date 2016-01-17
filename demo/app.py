@@ -13,7 +13,6 @@ from tornado.options import define, options
 from restornado.database import initialize_sessionmaker
 from restornado.database.session import register_shutdown_handler
 from urls import urls
-
 define("port", default=9999, help="run on the given port", type=int)
 
 DEBUG = True
